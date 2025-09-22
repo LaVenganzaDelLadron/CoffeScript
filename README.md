@@ -1,4 +1,4 @@
-# ☕ CoffeeShop Admin Backend 🐍
+CoffeeShop Admin Backend 🐍
 
 Welcome to the **Coffee Admin Control Center** – your all-in-one backend for managing coffees, users, carts, and orders.  
 Built with **FastAPI + MariaDB**, sprinkled with some extra beans for fun! 🚀
@@ -24,9 +24,6 @@ Built with **FastAPI + MariaDB**, sprinkled with some extra beans for fun! 🚀
 - 🐍 Python (FastAPI)
 - 🐬 MariaDB / MySQL
 - 📡 REST APIs
-- 🔒 JWT Authentication (recommended)
-- 🔗 Firebase UID for mobile users
-
 ---
 
 # run server
