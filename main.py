@@ -1,6 +1,5 @@
 import uuid
-
-from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, File
+from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import Annotated
 from sqlalchemy import text, func
@@ -59,14 +58,21 @@ async def login(user: UserLogin, db: db_dependency):
 
 
 @app.post("/addcoffee/")
-async def add_coffee(coffee: CoffeeStatus, db: db_dependency, name, description, category, price, aid, file: UploadFile = File(...)):
-    db_coffee = db.query(models.AddCoffee).filter(models.AddCoffee.name == coffee.name).first()
+async def add_coffee(
+    name: str = Form(...),
+    description: str = Form(...),
+    category: str = Form(...),
+    price: float = Form(...),
+    aid: int = Form(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    db_coffee = db.query(models.AddCoffee).filter(models.AddCoffee.name == name).first()
     if db_coffee:
-        raise HTTPException(status_code=400, detail="Coffee is already exists")
+        raise HTTPException(status_code=400, detail="Coffee already exists")
 
     file.filename = f"{uuid.uuid4()}.jpg"
     contents = await file.read()
-
 
     result = db.execute(text("SELECT GenerateCoffeeID()")).scalar()
     new_id = result
@@ -85,9 +91,10 @@ async def add_coffee(coffee: CoffeeStatus, db: db_dependency, name, description,
     db.commit()
     db.refresh(new_coffee)
 
-    return {"message": "Coffee Added Successfully", "coffee_id":new_coffee.id}
-
-
-
-
+    return {
+        "message": "Coffee Added Successfully",
+        "coffee_id": new_coffee.id,
+        "name": new_coffee.name,
+        "category": new_coffee.category
+    }
 
