@@ -98,3 +98,28 @@ async def add_coffee(
         "category": new_coffee.category
     }
 
+
+@app.get("/getproducts/{aid}")
+async def get_products(aid: int, db: Session = Depends(get_db)):
+    products = db.query(models.AddCoffee).filter(models.AddCoffee.aid == aid).all()
+
+    if not products:
+        raise HTTPException(status_code=404, detail="No products found for this admin")
+
+    return [
+        {
+            "coffee_id": product.id,
+            "name": product.name,
+            "description": product.description,
+            "category": product.category,
+            "price": product.price,
+            "aid": product.aid
+        }
+        for product in products
+    ]
+
+
+@app.get("/productcount/{aid}")
+async def get_product_count(aid: int, db: Session = Depends(get_db)):
+    count = db.query(models.AddCoffee).filter(models.AddCoffee.aid == aid).count()
+    return {"count": count}
