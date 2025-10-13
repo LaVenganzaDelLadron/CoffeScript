@@ -58,6 +58,16 @@ class Order(Base):
     order_type = Column(Enum(OrderTypeStatus), default=OrderTypeStatus.pickup)
     status = Column(Enum(OrderStatus), default=OrderStatus.pending)
 
+
+class OrderItems(Base):
+    __tablename__ = "order_items"
+    id = Column(String(50), primary_key=True, index=True)
+    order_id = Column(Integer)
+    coffee_id = Column(Integer)
+    size = Column(Enum(CartStatus), default=CartStatus.small)
+    quantity = Column(DECIMAL(10, 2), nullable=False)
+
+
 class Cart(Base):
     __tablename__ = "cart_items"
     id = Column(String(50), primary_key=True, index=True)

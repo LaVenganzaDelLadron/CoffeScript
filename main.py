@@ -159,10 +159,6 @@ async def update_coffee(
 
 
 
-
-
-
-
 @app.get("/getproducts/{aid}")
 async def get_products(aid: int, db: Session = Depends(get_db)):
     products = db.query(models.AddCoffee).filter(models.AddCoffee.aid == aid).all()
@@ -184,6 +180,57 @@ async def get_products(aid: int, db: Session = Depends(get_db)):
 
 
 
+@app.get("/getstatusorders/{status}")
+async def get_orders_by_status(status: str, db: Session = Depends(get_db)):
+    try:
+        orders = db.query(models.Order).filter(models.Order.status == status).all()
+
+        if not orders:
+            raise HTTPException(status_code=404, detail=f"No {status} orders found")
+
+        result = []
+        for order in orders:
+            items = (
+                db.query(models.OrderItems, models.AddCoffee.name)
+                .join(models.AddCoffee, models.OrderItems.coffee_id == models.AddCoffee.id)
+                .filter(models.OrderItems.order_id == order.id)
+                .all()
+            )
+
+            item_list = [
+                {
+                    "coffee_name": coffee_name,
+                    "size": getattr(item.OrderItems.size, "value", str(item.OrderItems.size)),
+                    "quantity": float(item.OrderItems.quantity)
+                }
+                for item, coffee_name in items
+            ]
+
+            result.append({
+                "id": order.id,
+                "user_id": order.user_id,
+                "store_id": order.store_id,
+                "total_amount": float(order.total_amount),
+                "order_type": getattr(order.order_type, "value", str(order.order_type)),
+                "status": getattr(order.status, "value", str(order.status)),
+                "items": item_list
+            })
+
+        return result
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        import traceback
+        print("🚨 ERROR in get_orders_by_status:", str(e))
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+
+
+
+
+
+
 @app.get("/productcount/{aid}")
 async def get_product_count(aid: int, db: Session = Depends(get_db)):
     try:
@@ -192,6 +239,9 @@ async def get_product_count(aid: int, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+
+
 @app.get("/ordercount/")
 async def get_order_count(db: Session = Depends(get_db)):
     try:
@@ -199,6 +249,9 @@ async def get_order_count(db: Session = Depends(get_db)):
         return {"count": count}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
 
 @app.get("/getorders/")
 async def get_products(db: Session = Depends(get_db)):
@@ -224,6 +277,7 @@ async def get_products(db: Session = Depends(get_db)):
 
 
 
+
 @app.get("/getcartitems/")
 async def get_cartitems(db: Session = Depends(get_db)):
     try:
@@ -244,3 +298,29 @@ async def get_cartitems(db: Session = Depends(get_db)):
         ]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/totalrevenue/")
+async def get_total_revenue(db: Session = Depends(get_db)):
+    try:
+        total = db.query(func.sum(models.Order.total_amount))\
+                  .filter(models.Order.status == 'completed')\
+                  .scalar()
+        total_revenue = float(total or 0.0)
+        return {"total_revenue": total_revenue}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@app.get("/pendingpayments/")
+async def get_pending_revenue(db: Session = Depends(get_db)):
+    try:
+        pending_orders = db.query(models.Order)\
+                           .filter(models.Order.status == 'pending')\
+                           .all()
+        total_pending = sum(float(order.total_amount) for order in pending_orders)
+        return {"pending_revenue": total_pending}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
