@@ -3,11 +3,9 @@ from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, File, F
 from pydantic import BaseModel
 from typing import Annotated
 from sqlalchemy import text, func
-from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlalchemy.orm import Session
 import models
 from database import engine, SessionLocal
-from models import CoffeeStatus
 
 # Create tables
 models.Base.metadata.create_all(bind=engine)
@@ -18,6 +16,7 @@ app = FastAPI()
 class UserCreate(BaseModel):
     username: str
     password: str
+
 
 class UserLogin(BaseModel):
     username: str
@@ -99,6 +98,71 @@ async def add_coffee(
     }
 
 
+@app.delete("/deletecoffee/{coffee_id}", status_code=status.HTTP_200_OK)
+async def delete_coffee(coffee_id: str, db: Session = Depends(get_db)):
+    try:
+        coffee = db.query(models.AddCoffee).filter(models.AddCoffee.id == coffee_id).first()
+
+        if not coffee:
+            raise HTTPException(status_code=404, detail="Coffee not found")
+
+        db.delete(coffee)
+        db.commit()
+
+        return {"message": f"Coffee '{coffee.name}' deleted successfully"}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@app.put("/updatecoffee/{coffee_id}", status_code=status.HTTP_200_OK)
+async def update_coffee(
+    coffee_id: str,
+    name: str = Form(...),
+    description: str = Form(...),
+    category: str = Form(...),
+    price: float = Form(...),
+    aid: int = Form(...),
+    file: UploadFile | None = File(None),
+    db: Session = Depends(get_db)
+):
+    try:
+        coffee = db.query(models.AddCoffee).filter(models.AddCoffee.id == coffee_id).first()
+        if not coffee:
+            raise HTTPException(status_code=404, detail="Coffee not found")
+
+        coffee.name = name
+        coffee.description = description
+        coffee.category = category
+        coffee.price = price
+        coffee.aid = aid
+
+        if file is not None:
+            contents = await file.read()
+            coffee.image = contents
+
+        db.commit()
+        db.refresh(coffee)
+
+        return {
+            "message": f"Coffee '{coffee.name}' updated successfully!",
+            "coffee_id": coffee.id,
+            "name": coffee.name,
+            "category": coffee.category,
+            "price": float(coffee.price)
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+
+
+
+
 @app.get("/getproducts/{aid}")
 async def get_products(aid: int, db: Session = Depends(get_db)):
     products = db.query(models.AddCoffee).filter(models.AddCoffee.aid == aid).all()
@@ -108,18 +172,75 @@ async def get_products(aid: int, db: Session = Depends(get_db)):
 
     return [
         {
-            "coffee_id": product.id,
+            "id": product.id,
             "name": product.name,
             "description": product.description,
             "category": product.category,
-            "price": product.price,
+            "price": float(product.price),
             "aid": product.aid
         }
         for product in products
     ]
 
 
+
 @app.get("/productcount/{aid}")
 async def get_product_count(aid: int, db: Session = Depends(get_db)):
-    count = db.query(models.AddCoffee).filter(models.AddCoffee.aid == aid).count()
-    return {"count": count}
+    try:
+        count = db.query(models.AddCoffee).filter(models.AddCoffee.aid == aid).count()
+        return {"count": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/ordercount/")
+async def get_order_count(db: Session = Depends(get_db)):
+    try:
+        count = db.query(func.count(models.Order.id)).scalar()
+        return {"count": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/getorders/")
+async def get_products(db: Session = Depends(get_db)):
+    try:
+        orders = db.query(models.Order).all()
+
+        if not orders:
+            raise HTTPException(status_code=404, detail="No orders found for this admin")
+
+        return [
+            {
+                "id": order.id,
+                "user_id": order.user_id,
+                "store_id": order.store_id,
+                "total_amount": order.total_amount,
+                "order_type": order.order_type,
+                "status": order.status
+            }
+            for order in orders
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@app.get("/getcartitems/")
+async def get_cartitems(db: Session = Depends(get_db)):
+    try:
+        carts = db.query(models.Cart).all()
+
+        if not carts:
+            raise HTTPException(status_code=404, detail="No cart found for this admin")
+
+        return [
+            {
+                "id": cart.id,
+                "firebase_uid": cart.firebase_uid,
+                "coffee_id": cart.coffee_id,
+                "size": cart.size,
+                "quantity": cart.quantity
+            }
+            for cart in carts
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

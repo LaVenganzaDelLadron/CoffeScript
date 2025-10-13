@@ -17,6 +17,24 @@ class CoffeeStatus(enum.Enum):
     active = "active"
     inactive = "inactive"
 
+class OrderTypeStatus(enum.Enum):
+    pickup = "pickup"
+    delivery = "delivery"
+
+class OrderStatus(enum.Enum):
+    pending = "pending"
+    accepted = "accepted"
+    preparing = "preparing"
+    ready = "ready"
+    completed = "completed"
+    cancelled = "cancelled"
+
+class CartStatus(enum.Enum):
+    small = "small"
+    medium = "medium"
+    large = "large"
+
+
 class AddCoffee(Base):
     __tablename__ = "coffees"
     id = Column(String(50), primary_key=True, index=True)
@@ -31,3 +49,19 @@ class AddCoffee(Base):
     admin = relationship("Admin", back_populates="coffees")
 
 
+class Order(Base):
+    __tablename__ = "orders"
+    id = Column(String(50), primary_key=True, index=True)
+    user_id = Column(Integer)
+    store_id = Column(Integer)
+    total_amount = Column(DECIMAL(10, 2), nullable=False)
+    order_type = Column(Enum(OrderTypeStatus), default=OrderTypeStatus.pickup)
+    status = Column(Enum(OrderStatus), default=OrderStatus.pending)
+
+class Cart(Base):
+    __tablename__ = "cart_items"
+    id = Column(String(50), primary_key=True, index=True)
+    firebase_uid = Column(String(255))
+    coffee_id = Column(String(50))
+    size = Column(Enum(CartStatus), default=CartStatus.small)
+    quantity = Column(DECIMAL(10, 2), nullable=False)
