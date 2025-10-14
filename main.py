@@ -98,6 +98,50 @@ async def add_coffee(
     }
 
 
+
+
+@app.post("/addstore/")
+async def add_store(
+        name: str = Form(...),
+        address: str = Form(...),
+        prep_time_minutes: int = Form(...),
+        status: str = Form(...),
+        db: Session = Depends(get_db)
+):
+    db_store = db.query(models.AddStore).filter(
+        models.AddStore.name == name,
+        models.AddStore.address == address
+    ).first()
+    if db_store:
+        raise HTTPException(status_code=400, detail="Store already exists")
+
+    # Validate status
+    if status not in ["open", "closed"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+
+    new_store = models.AddStore(
+        name=name,
+        address=address,
+        prep_time_minutes=prep_time_minutes,
+        status=status
+    )
+
+    db.add(new_store)
+    db.commit()
+    db.refresh(new_store)
+
+    return {
+        "message": "Store Added Successfully",
+        "store_id": new_store.id,
+        "name": name,
+        "address": address,
+        "prep_time_minutes": prep_time_minutes,
+        "status": status
+    }
+
+
+
+
 @app.delete("/deletecoffee/{coffee_id}", status_code=status.HTTP_200_OK)
 async def delete_coffee(coffee_id: str, db: Session = Depends(get_db)):
     try:

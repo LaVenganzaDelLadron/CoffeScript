@@ -17,6 +17,10 @@ class CoffeeStatus(enum.Enum):
     active = "active"
     inactive = "inactive"
 
+class StoreStatus(enum.Enum):
+    open = "open"
+    closed = "closed"
+
 class OrderTypeStatus(enum.Enum):
     pickup = "pickup"
     delivery = "delivery"
@@ -47,6 +51,15 @@ class AddCoffee(Base):
     aid = Column(Integer, ForeignKey("admin.AID", ondelete="CASCADE"))
 
     admin = relationship("Admin", back_populates="coffees")
+
+
+class AddStore(Base):
+    __tablename__ = "stores"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(50))
+    address = Column(String(255))
+    prep_time_minutes = Column(DECIMAL(10, 2), nullable=False)
+    status = Column(Enum(StoreStatus), default=StoreStatus.open)
 
 
 class Order(Base):
