@@ -145,8 +145,8 @@ async def get_products(aid: int, db: Session = Depends(get_db)):
     ]
 
 
-@router.get("/productcount/{aid}")
-async def get_product_count(aid: int, db: Session = Depends(get_db)):
+@router.get("/coffeecount/{aid}")
+async def get_coffee_count(aid: int, db: Session = Depends(get_db)):
     try:
         count = db.query(coffee.AddCoffee).filter(coffee.AddCoffee.aid == aid).count()
         return {"count": count}
