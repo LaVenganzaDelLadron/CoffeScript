@@ -8,6 +8,8 @@ from models import admin, order
 
 router = APIRouter(prefix="/money", tags=["Money"])
 
+order.Base.metadata.create_all(bind=engine)
+
 def get_db():
     db = SessionLocal()
     try:
