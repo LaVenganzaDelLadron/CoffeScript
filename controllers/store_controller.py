@@ -3,8 +3,7 @@ from pydantic import BaseModel
 from typing import Annotated
 from sqlalchemy.orm import Session
 from database import engine, SessionLocal
-from models import store
-
+from models import store, coffee
 
 router = APIRouter(prefix="/store", tags=["Store"])
 
@@ -59,3 +58,22 @@ async def add_store(
         "prep_time_minutes": prep_time_minutes,
         "status": status
     }
+
+@router.get("/getstores/")
+async def get_stores(db: Session = Depends(get_db)):
+    stores = db.query(store.AddStore).all()
+
+    if not stores:
+        raise HTTPException(status_code=404, detail="Store not found")
+
+    return [
+        {
+            "id": s.id,
+            "name": s.name,
+            "address": s.address,
+            "prep_time_minutes": str(s.prep_time_minutes),
+            "status": s.status.value if s.status else None
+        }
+        for s in stores
+    ]
+

@@ -137,7 +137,7 @@ async def get_products(aid: int, db: Session = Depends(get_db)):
             "id": product.id,
             "name": product.name,
             "description": product.description,
-            "category": product.category,
+            "category": product.category_id,
             "price": float(product.price),
             "aid": product.aid
         }

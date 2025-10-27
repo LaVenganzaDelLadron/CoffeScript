@@ -100,3 +100,21 @@ async def get_order_count(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.delete("/deleteorder/{id}" , status_code=status.HTTP_200_OK)
+async  def delete_order(id: str, db: Session = Depends(get_db)):
+    try:
+        orders = db.query(order.Order).filter(order.Order.id == id).first()
+
+        if not orders:
+            raise HTTPException(status_code=404, detail="No orders found for this admin")
+
+        db.delete(orders)
+        db.commit()
+
+        return {"message": f"Order {order.id} has been deleted successfully"}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
