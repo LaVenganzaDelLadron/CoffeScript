@@ -117,4 +117,47 @@ async  def delete_order(id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/topselling/")
+async def get_top_selling_orders(limit: int = 10, db: Session = Depends(get_db)):
+    """
+    Returns the top-selling coffees based on total quantity sold.
+    Includes coffee name, total quantity, and total sales.
+    """
+    try:
+        # Aggregate total quantity and sales by coffee
+        results = (
+            db.query(
+                coffee.AddCoffee.id.label("coffee_id"),
+                coffee.AddCoffee.name.label("coffee_name"),
+                func.sum(orderitems.OrderItems.quantity).label("total_quantity"),
+                func.sum(orderitems.OrderItems.quantity * coffee.AddCoffee.price).label("total_sales")
+            )
+            .join(orderitems.OrderItems, coffee.AddCoffee.id == orderitems.OrderItems.coffee_id)
+            .join(order.Order, orderitems.OrderItems.order_id == order.Order.id)
+            .filter(order.Order.status.in_(["completed", "ready"]))  # Count only completed/ready orders
+            .group_by(coffee.AddCoffee.id, coffee.AddCoffee.name)
+            .order_by(func.sum(orderitems.OrderItems.quantity).desc())
+            .limit(limit)
+            .all()
+        )
+
+        if not results:
+            raise HTTPException(status_code=404, detail="No sales data found")
+
+        return [
+            {
+                "coffee_id": row.coffee_id,
+                "coffee_name": row.coffee_name,
+                "total_quantity": float(row.total_quantity),
+                "total_sales": float(row.total_sales)
+            }
+            for row in results
+        ]
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
