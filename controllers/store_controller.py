@@ -77,3 +77,24 @@ async def get_stores(db: Session = Depends(get_db)):
         for s in stores
     ]
 
+@router.delete("/deletestore/{store_id}")
+async def delete_store(store_id: int, db: Session = Depends(get_db)):
+    try:
+        stores = db.query(store.AddStore).filter(store.AddStore.id == store_id).first()
+
+        if not stores:
+            raise HTTPException(status_code=404, detail="Store not found")
+
+        db.delete(stores)
+        db.commit()
+
+        return {"message": f"Store {stores.name} Deleted Successfully"}
+
+    except Exception as e:
+        raise HTTPException(status_code=404, detail="Store not found")
+
+
+
+
+
+
