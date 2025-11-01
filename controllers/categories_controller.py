@@ -40,24 +40,18 @@ async def add_categories(name: str = Form(...), db: Session = Depends(get_db)):
     }
 
 
-@router.put("/updatecategories/")
-async def update_categories(name: str = Form(...), db: Session = Depends(get_db)):
-    try:
-        categories = db.query(category.AddCategory).filter(category.AddCategory.name == name).first()
-        if not category:
-            raise HTTPException(status_code=404, detail="Category does not exist")
 
-        categories.name = name
+@router.put("/updatecategories/{id}")
+async def update_categories(id: int, name: str = Form(...), db: Session = Depends(get_db)):
+    existing = db.query(category.AddCategory).filter(category.AddCategory.id == id).first()
+    if not existing:
+        raise HTTPException(status_code=404, detail="Category does not exist")
 
-        db.commit()
-        db.refresh(categories)
-        return {
-            "message": "Category Updated Successfully",
-            "name": categories.name
-        }
+    existing.name = name
+    db.commit()
+    db.refresh(existing)
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return {"message": "Category Updated Successfully", "name": existing.name}
 
 
 @router.post("/getcategories/")

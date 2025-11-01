@@ -29,7 +29,7 @@ db_dependency = Annotated[Session, Depends(get_db)]
 async def add_coffee(
         name: str = Form(...),
         description: str = Form(...),
-        category: str = Form(...),
+        category: int = Form(...),
         price: float = Form(...),
         aid: int = Form(...),
         file: UploadFile = File(...),
@@ -86,29 +86,29 @@ async def delete_coffee(coffee_id: str, db: Session = Depends(get_db)):
 
 @router.put("/updatecoffee/{coffee_id}", status_code=status.HTTP_200_OK)
 async def update_coffee(
-        coffee_id: str,
-        name: str = Form(...),
-        description: str = Form(...),
-        category: str = Form(...),
-        price: float = Form(...),
-        aid: int = Form(...),
-        file: UploadFile | None = File(None),
-        db: Session = Depends(get_db)
+    coffee_id: str,
+    name: str = Form(...),
+    description: str = Form(...),
+    category: str = Form(...),
+    price: float = Form(...),
+    aid: int = Form(...),
+    file: UploadFile | None = File(None),
+    db: Session = Depends(get_db)
 ):
     try:
         coffees = db.query(coffee.AddCoffee).filter(coffee.AddCoffee.id == coffee_id).first()
-        if not coffee:
+        if not coffees:
             raise HTTPException(status_code=404, detail="Coffee not found")
 
         coffees.name = name
         coffees.description = description
-        coffees.category = category
+        coffees.category_id = category
         coffees.price = price
         coffees.aid = aid
 
         if file is not None:
             contents = await file.read()
-            coffee.image = contents
+            coffees.image = contents  # ✅ fixed variable
 
         db.commit()
         db.refresh(coffees)
@@ -117,7 +117,7 @@ async def update_coffee(
             "message": f"Coffee '{coffees.name}' updated successfully!",
             "coffee_id": coffees.id,
             "name": coffees.name,
-            "category": coffees.category,
+            "category": coffees.category_id,
             "price": float(coffees.price)
         }
 
@@ -125,24 +125,31 @@ async def update_coffee(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+
 @router.get("/getproducts/{aid}")
 async def get_products(aid: int, db: Session = Depends(get_db)):
-    products = db.query(coffee.AddCoffee).filter(coffee.AddCoffee.aid == aid).all()
+    try:
+        coffees = db.query(coffee.AddCoffee).filter(coffee.AddCoffee.aid == aid).all()
 
-    if not products:
-        raise HTTPException(status_code=404, detail="No products found for this admin")
+        if not coffees:
+            return {"message": "No coffee products found", "products": []}
 
-    return [
-        {
-            "id": product.id,
-            "name": product.name,
-            "description": product.description,
-            "category": product.category_id,
-            "price": float(product.price),
-            "aid": product.aid
-        }
-        for product in products
-    ]
+        return [
+            {
+                "id": c.id,
+                "name": c.name,
+                "description": c.description,
+                "category": c.category_id,
+                "price": float(c.price),
+                "aid": c.aid
+            }
+            for c in coffees
+        ]
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 
 
 @router.get("/coffeecount/{aid}")
@@ -152,3 +159,27 @@ async def get_coffee_count(aid: int, db: Session = Depends(get_db)):
         return {"count": count}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/getproductsbycategory/{admin_id}/{category}")
+def get_products_by_category(admin_id: int, category: str, db: Session = Depends(get_db)):
+    coffees = db.query(coffee.AddCoffee).filter(
+        coffee.AddCoffee.aid == admin_id,
+        coffee.AddCoffee.category_id == category  # ✅ category_id should also be a string in DB
+    ).all()
+
+    if not coffees:
+        return {"message": f"No coffee found in category '{category}'", "products": []}
+
+    return [
+        {
+            "id": c.id,
+            "name": c.name,
+            "description": c.description,
+            "category": c.category_id,
+            "price": float(c.price),
+            "aid": c.aid
+        }
+        for c in coffees
+    ]
+
