@@ -24,8 +24,11 @@ db_dependency = Annotated[Session, Depends(get_db)]
 @router.get("/getorders/")
 async def get_orders(db: Session = Depends(get_db)):
     try:
-        orders = db.query(order.Order).all()
-
+        orders = (
+            db.query(order.Order)
+            .filter(order.Order.status != "completed")
+            .all()
+        )
         if not orders:
             raise HTTPException(status_code=404, detail="No orders found for this admin")
 
@@ -118,14 +121,13 @@ async  def delete_order(id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/topselling/")
-async def get_top_selling_orders(limit: int = 10, db: Session = Depends(get_db)):
+async def get_top_selling_orders(limit: int = 0, db: Session = Depends(get_db)):
     """
     Returns the top-selling coffees based on total quantity sold.
-    Includes coffee name, total quantity, and total sales.
+    If limit=0, return all results.
     """
     try:
-        # Aggregate total quantity and sales by coffee
-        results = (
+        query = (
             db.query(
                 coffee.AddCoffee.id.label("coffee_id"),
                 coffee.AddCoffee.name.label("coffee_name"),
@@ -134,12 +136,15 @@ async def get_top_selling_orders(limit: int = 10, db: Session = Depends(get_db))
             )
             .join(orderitems.OrderItems, coffee.AddCoffee.id == orderitems.OrderItems.coffee_id)
             .join(order.Order, orderitems.OrderItems.order_id == order.Order.id)
-            .filter(order.Order.status.in_(["completed", "ready"]))  # Count only completed/ready orders
+            .filter(order.Order.status.in_(["completed", "ready"]))
             .group_by(coffee.AddCoffee.id, coffee.AddCoffee.name)
             .order_by(func.sum(orderitems.OrderItems.quantity).desc())
-            .limit(limit)
-            .all()
         )
+
+        if limit > 0:
+            query = query.limit(limit)
+
+        results = query.all()
 
         if not results:
             raise HTTPException(status_code=404, detail="No sales data found")
@@ -154,10 +159,6 @@ async def get_top_selling_orders(limit: int = 10, db: Session = Depends(get_db))
             for row in results
         ]
 
-    except HTTPException as e:
-        raise e
     except Exception as e:
-        import traceback
-        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 

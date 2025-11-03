@@ -59,6 +59,43 @@ async def add_store(
         "status": status
     }
 
+@router.put("/updatestore/{store_id}", status_code=status.HTTP_200_OK)
+async def update_store(
+    store_id: int,
+    name: str = Form(...),
+    address: str = Form(...),
+    prep_time_minutes: int = Form(...),
+    status: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    store_item = db.query(store.AddStore).filter(store.AddStore.id == store_id).first()
+
+    if not store_item:
+        raise HTTPException(status_code=404, detail="Store not found")
+
+    if status not in ["open", "closed"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+
+    store_item.name = name
+    store_item.address = address
+    store_item.prep_time_minutes = prep_time_minutes
+    store_item.status = status
+
+    db.commit()
+    db.refresh(store_item)
+
+    return {
+        "message": f"Store '{store_item.name}' updated successfully!",
+        "store_id": store_item.id,
+        "name": store_item.name,
+        "address": store_item.address,
+        "prep_time_minutes": store_item.prep_time_minutes,
+        "status": store_item.status,
+    }
+
+
+
+
 @router.get("/getstores/")
 async def get_stores(db: Session = Depends(get_db)):
     stores = db.query(store.AddStore).all()
@@ -92,9 +129,3 @@ async def delete_store(store_id: int, db: Session = Depends(get_db)):
 
     except Exception as e:
         raise HTTPException(status_code=404, detail="Store not found")
-
-
-
-
-
-
